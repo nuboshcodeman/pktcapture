@@ -1,0 +1,11 @@
+{
+    "dev": "eth0",
+    "filter": "port 80",
+    "apps": {
+        "10001": "http://www.nubosh.com/index.html",
+        "10002": "http://www.sina.com.cn"
+    },
+    "depth": 3,
+    "output": "result",
+    "verbose": false
+}
