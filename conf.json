@@ -1,11 +1,15 @@
 {
-    "dev": "eth0",
+    "dev": "ens160",
     "filter": "port 80",
     "apps": {
-        "10001": "http://www.nubosh.com/index.html",
-        "10002": "http://www.sina.com.cn"
+        "10002": "http://www.sina.com.cn",
+        "10003": "http://www.baidu.com"
     },
-    "depth": 3,
-    "output": "result",
+    "maxdepth": 2,
+    "limit": 50,
+    "output": {
+        "pcap_dir": "pcap_capture_dumps",
+        "temp_dir": "web_crawler_output"
+    },
     "verbose": false
 }

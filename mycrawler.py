@@ -9,14 +9,29 @@ from scrapy.settings import Settings
 from scrapy.utils.project import get_project_settings
 
 import json
+import sys
 
 class JsonWriterPipeline(object):
-    def __init__(self):
-        self.file = open('output.json', 'wb')
+    def __init__(self, output_file):
+        try:
+            self.fpath = output_file
+        except Exception, e:
+            raise e
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        settings = crawler.settings
+        return cls(settings.get("OUTPUT_FILE"))
+
+    def open_spider(self, spider):
+        self.outfd = open(self.fpath, "wb")
+
+    def close_spider(self, spider):
+        self.outfd.close()
     
     def process_item(self, item, spider):
         line = json.dumps(dict(item)) + "\n"
-        self.file.write(line)
+        self.outfd.write(line)
         return item
 
 class MyCrawler(Spider):
@@ -75,14 +90,23 @@ class MyCrawler(Spider):
         else:
             return False
 
-if __name__ == "__main__":
+def init_and_run_web_crawler(url, tempfile):
     settings = get_project_settings()
+
+    #settings.clear()
     
     ITEM_PIPELINES = {
-        'mycrawler.JsonWriterPipeline': 300,
+        "mycrawler.JsonWriterPipeline": 300
     }
+    settings.set("ITEM_PIPELINES", ITEM_PIPELINES, 300)
+    settings.set("OUTPUT_FILE", tempfile, 300)
 
-    settings.set('ITEM_PIPELINES', ITEM_PIPELINES, 300)
     process = CrawlerProcess(settings)
-    process.crawl(MyCrawler, start_urls=['http://www.baidu.com/'])
+    process.crawl(MyCrawler, start_urls=[url])
     process.start()
+    process.stop()
+
+if __name__ == "__main__":
+    url = sys.argv[1]
+    fpath = sys.argv[2]
+    init_and_run_web_crawler(url, fpath)
