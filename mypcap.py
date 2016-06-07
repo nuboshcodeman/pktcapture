@@ -39,6 +39,8 @@ class PcapThread(threading.Thread):
                 if self.verbose:
                     self.parse_packet(packet)
                 self.dumpfd.dump(header, packet)
+
+        self.dumpfd = None # NOTE: free the dumpfd then python would do IO flush
     
     def end_pcap(self):
         self.pcap_should_stop = True
@@ -98,7 +100,7 @@ class PcapThread(threading.Thread):
     			
     			# get data from the packet
     			data = packet[h_size:]
-    			print 'Data : ' + data
+    			#print 'Data : ' + data
     		#some other IP packet
     		else:
     			print 'Other protocol'

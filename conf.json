@@ -1,9 +1,8 @@
 {
     "dev": "ens160",
-    "filter": "port 80",
+    "filter": "port 80 or port 443",
     "apps": {
-        "10002": "http://www.sina.com.cn",
-        "10003": "http://www.baidu.com"
+        "10001": "https://kyfw.12306.cn/otn/lcxxcx/init"
     },
     "maxdepth": 2,
     "limit": 50,

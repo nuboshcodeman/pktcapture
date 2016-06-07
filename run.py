@@ -40,9 +40,9 @@ def run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, dump_prefix, 
     try:
         status, output = commands.getstatusoutput("%s \"%s\" %s" % (binpath, url, temp_file))
         if status == 0:
-            print "%s ================> done" % url
+            print "%s ===> done" % url
         else:
-            print "%s ================> error" % url
+            print "%s ===> error" % url
     except Exception, e:
         print "*** ERROR: fault url is %s" % url
 
@@ -52,7 +52,11 @@ def run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, dump_prefix, 
     time.sleep(1)
 
     # filter dump pcap file
-    mypacket = MyHTTPPacket(pcap_file, False)
+    mypacket = None
+    if url.startswith("http://"):
+        mypacket = MyHTTPPacket(pcap_file, verbose)
+    elif url.startswith("https://"):
+        mypacket = MyHTTPSPacket(pcap_file, verbose)
     mypacket.parse()
 
     inc_visit_count()

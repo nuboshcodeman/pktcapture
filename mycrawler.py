@@ -10,6 +10,7 @@ from scrapy.utils.project import get_project_settings
 
 import json
 import sys
+import re
 
 class JsonWriterPipeline(object):
     def __init__(self, output_file):
@@ -27,6 +28,7 @@ class JsonWriterPipeline(object):
         self.outfd = open(self.fpath, "wb")
 
     def close_spider(self, spider):
+        self.outfd.flush()
         self.outfd.close()
     
     def process_item(self, item, spider):
@@ -44,8 +46,6 @@ class MyCrawler(Spider):
         self.start_urls = start_urls
     
     def parse(self, response):
-        sel = Selector(response)
-
         items = []
 
         self.__parse_http_header(response.headers)
@@ -75,6 +75,17 @@ class MyCrawler(Spider):
         #
         # TODO: do we miss something ???
         #
+
+        #print "*********************"
+        #print html
+        #print "---"
+        #print html.body
+        #print "---"
+        #print html.text
+        #print "---"
+        #print dir(html)
+        #print "*********************"
+
         links = []
         for href_link in html.xpath("//a/@href").extract():
             if self.__href_link_good_or_not(href_link):
@@ -92,8 +103,6 @@ class MyCrawler(Spider):
 
 def init_and_run_web_crawler(url, tempfile):
     settings = get_project_settings()
-
-    #settings.clear()
     
     ITEM_PIPELINES = {
         "mycrawler.JsonWriterPipeline": 300
