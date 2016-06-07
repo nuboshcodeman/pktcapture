@@ -56,6 +56,7 @@ class MyHTTPPacket(MyTCPPacket):
             
             if self.verbose:
                 print "===> %s %s" % (http.method, http.uri)
+            print "===> http host: \033[4;40;33m%s\033[0m" % http.headers["host"]
 
             interested = True
 

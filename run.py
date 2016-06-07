@@ -40,9 +40,9 @@ def run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, dump_prefix, 
     try:
         status, output = commands.getstatusoutput("%s \"%s\" %s" % (binpath, url, temp_file))
         if status == 0:
-            print "%s ===> done" % url
+            print "%s ===> \033[1;40;34m%s\033[0m" % (url, "done")
         else:
-            print "%s ===> error" % url
+            print "%s ===> \033[1;40;31m%s\033[0m" % (url, "error")
     except Exception, e:
         print "*** ERROR: fault url is %s" % url
 

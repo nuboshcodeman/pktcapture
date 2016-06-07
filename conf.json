@@ -2,7 +2,8 @@
     "dev": "ens160",
     "filter": "port 80 or port 443",
     "apps": {
-        "10001": "https://kyfw.12306.cn/otn/lcxxcx/init"
+        "10001": "https://kyfw.12306.cn/otn/lcxxcx/init",
+        "10002": "http://www.sina.com.cn/"
     },
     "maxdepth": 2,
     "limit": 50,
