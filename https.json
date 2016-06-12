@@ -2,7 +2,6 @@
     "dev": "ens160",
     "filter": "port 80 or port 443",
     "apps": {
-        "10001": "http://www.lishi.net",
         "10002": "https://kyfw.12306.cn/otn/lcxxcx/init"
     },
     "maxdepth": 2,

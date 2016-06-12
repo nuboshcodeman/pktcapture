@@ -3,8 +3,11 @@
 
 import os
 import dpkt
-import pcapy
 import commands
+
+from scapy.all import *
+from scapy_ssl_tls import *
+from scapy_ssl_tls.ssl_tls import *
 
 
 class MyTCPPacket:
@@ -42,11 +45,12 @@ class MyTCPPacket:
                     writer.writepkt(buf)
                 if info_fp != None:
                     # NOTE: currently we only pay attention to host field
-                    if info.get("host", None) != None:
-                        info_fp.write(info["host"] + "\n")
+                    if info.get("hosts", None) != None:
+                        for host in info["hosts"]:
+                            info_fp.write(host + "\n")
                         info_fp.flush()
         except Exception, e:
-            print "*** ERROR: cannot filter %s %s" % (self.pcap_file, e)
+            print "*** ERROR: cannot filter %s, %s" % (self.pcap_file, e)
         finally:
             if inputfp != None:
                 inputfp.close()
@@ -68,7 +72,7 @@ class MyHTTPPacket(MyTCPPacket):
             interested = True
 
             host = http.headers["host"]
-            info["host"] = host
+            info["hosts"] = [host]
 
             print "===> http host: \033[4;40;33m%s\033[0m" % host
 
@@ -90,15 +94,18 @@ class MyHTTPSPacket(MyTCPPacket):
         info = {}
 
         if tcp.dport == 443 and len(tcp.data) > 0:
-            interested = self.parse_ssl(tcp.data)
+            interested, hosts = self.parse_ssl(tcp.data)
+            info["hosts"] = hosts
 
         if tcp.sport == 443 and len(tcp.data) > 0:
-            interested = self.parse_ssl(tcp.data)
+            interested, hosts = self.parse_ssl(tcp.data)
+            info["hosts"] = hosts
 
         return interested, info
 
     def parse_ssl(self, data):
         ssl_packet = False
+        hosts = []
 
         record = None
         try:
@@ -106,17 +113,17 @@ class MyHTTPSPacket(MyTCPPacket):
         except Exception, e:
             if self.verbose:
                 print "*** WARN: %s" % e
-            return ssl_packet
+            return ssl_packet, hosts
             
         if record.type not in dpkt.ssl.RECORD_TYPES:
-            return ssl_packet
+            return ssl_packet, hosts
 
         try:
             record = dpkt.ssl.RECORD_TYPES[record.type](record.data)
         except Exception, e:
             if self.verbose:
                 print "*** WARN: incomplete possible TLS handshake record"
-            return ssl_packet
+            return ssl_packet, hosts
 
         ssl_packet = True
         
@@ -135,12 +142,19 @@ class MyHTTPSPacket(MyTCPPacket):
                 elif ch.version == dpkt.ssl.TLS12_V:
                     if self.verbose:
                         print "===> TLSv1.2 Client Hello"
+
+                # NOTE: we have to reparse ssl packet with help of pcapy
+                hosts = self.reparse_ssl()
+
             elif isinstance(record.data, dpkt.ssl.TLSServerHello):
                 if self.verbose:
                     print "===> TLS Server Hello"
             elif isinstance(record.data, dpkt.ssl.TLSCertificate):
-                if self.verbose:
-                    print "===> TLSCertificate"
+                #if self.verbose:
+                #    print "===> TLSCertificate"
+                print "===> TLSCertificate"
+                print type(record.data)
+                print record.data.certificates
         elif isinstance(record, dpkt.ssl.TLSChangeCipherSpec):
             if self.verbose:
                 print "===> TLSChangeCipherSpec"
@@ -148,8 +162,28 @@ class MyHTTPSPacket(MyTCPPacket):
             if self.verbose:
                 print "===> TLSAppData"
 
-        return ssl_packet
+        return ssl_packet, hosts
 
+    def reparse_ssl(self):
+        hosts = []
+
+        packet = rdpcap(self.pcap_file)[3]
+        sslpayload = packet.lastlayer()
+
+        if isinstance(sslpayload[3], TLSClientHello):
+            if isinstance(sslpayload[4], TLSExtension):
+                if sslpayload[4].type == TLSExtensionType.SERVER_NAME:
+                    if isinstance(sslpayload[6], TLSServerName):
+                        k, host = sslpayload[6].getfield_and_val("data")
+                        host = host.strip().lower()
+                        if not host in hosts:
+                            hosts.append(host)
+
+                        print "===> https host: \033[4;40;33m%s\033[0m" % host
+
+        #if isinstance(sslpayload[3], )
+
+        return hosts
 
 #if __name__ == "__main__":
 #    filepath = "pcap_capture_dumps/10001-0.pcap"
