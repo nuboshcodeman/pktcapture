@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding:utf-8 -*-
 
 import os
 import dpkt
@@ -17,7 +18,7 @@ class MyTCPPacket:
 
         return os.path.join(dirname, "%s-%s" % ("filter", basename))
 
-    def parse(self):
+    def parse(self, info_fp = None):
         inputfp = None
         outputfp = None
         try:
@@ -36,8 +37,14 @@ class MyTCPPacket:
                     continue
                 tcp = ip.data
 
-                if self.want_packet(tcp):
+                interested, info = self.want_packet(tcp)
+                if interested:
                     writer.writepkt(buf)
+                if info_fp != None:
+                    # NOTE: currently we only pay attention to host field
+                    if info.get("host", None) != None:
+                        info_fp.write(info["host"] + "\n")
+                        info_fp.flush()
         except Exception, e:
             print "*** ERROR: cannot filter %s %s" % (self.pcap_file, e)
         finally:
@@ -50,15 +57,20 @@ class MyTCPPacket:
 class MyHTTPPacket(MyTCPPacket):
     def want_packet(self, tcp):
         interested = False
+        info = {}
 
         if tcp.dport == 80 and len(tcp.data) > 0:
             http = dpkt.http.Request(tcp.data)
             
             if self.verbose:
                 print "===> %s %s" % (http.method, http.uri)
-            print "===> http host: \033[4;40;33m%s\033[0m" % http.headers["host"]
 
             interested = True
+
+            host = http.headers["host"]
+            info["host"] = host
+
+            print "===> http host: \033[4;40;33m%s\033[0m" % host
 
         if tcp.sport == 80 and len(tcp.data) > 0:
             # FIXME: not sure what's wrong
@@ -69,12 +81,13 @@ class MyHTTPPacket(MyTCPPacket):
             #    print e
             interested = True
 
-        return interested
+        return interested, info
 
 
 class MyHTTPSPacket(MyTCPPacket):
     def want_packet(self, tcp):
         interested = False
+        info = {}
 
         if tcp.dport == 443 and len(tcp.data) > 0:
             interested = self.parse_ssl(tcp.data)
@@ -82,7 +95,7 @@ class MyHTTPSPacket(MyTCPPacket):
         if tcp.sport == 443 and len(tcp.data) > 0:
             interested = self.parse_ssl(tcp.data)
 
-        return interested
+        return interested, info
 
     def parse_ssl(self, data):
         ssl_packet = False

@@ -2,13 +2,13 @@
     "dev": "ens160",
     "filter": "port 80 or port 443",
     "apps": {
-        "10001": "https://kyfw.12306.cn/otn/lcxxcx/init",
-        "10002": "http://www.sina.com.cn/"
+        "10001": "http://www.lishi.net"
     },
     "maxdepth": 2,
     "limit": 50,
     "output": {
         "pcap_dir": "pcap_capture_dumps",
+        "info_dir": "app_info_output",
         "temp_dir": "web_crawler_output"
     },
     "verbose": false

@@ -1,8 +1,10 @@
 #!/usr/bin/python
+# -*- coding:utf-8 -*-
 
 import os, sys, getopt
 import pcapy
 import commands
+import subprocess
 import uuid
 import time
 import json
@@ -13,12 +15,31 @@ from mypacket import *
 visit = 0
 limit = 0
 
+
+def remove_dup_entry(fpath):
+    records = []
+    try:
+        fp = open(fpath, 'r')
+        for line in fp.readlines():
+            record = line.strip().lower()
+            if not record in records:
+                records.append(record)
+        fp.close()
+
+        fp = open(fpath, 'w')
+        for record in records:
+            fp.write(record + "\n")
+        fp.close()
+    except Exception, e:
+        raise
+
+
 def inc_visit_count():
     global visit
     visit += 1
 
 
-def run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, dump_prefix, depth, maxdepth):
+def run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, dump_prefix, depth, maxdepth, info_fp):
     global visit
     global limit
 
@@ -38,14 +59,27 @@ def run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, dump_prefix, 
     temp_file = os.path.join(temp_dir, dump_prefix + ".json")
     binpath = os.path.join(os.path.curdir, "mycrawler.py")
     try:
-        status, output = commands.getstatusoutput("%s \"%s\" %s" % (binpath, url, temp_file))
+        command = "%s '%s' %s" % (binpath, url, temp_file)
+        
+        # NOTE: here we cannot call commands.getstatusoutput because
+        # it would run into encoding error
+        p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = ""
+        for line in p.stdout.readlines():
+            output += line
+        for line in p.stderr.readlines():
+            output += line
+        status = p.wait()
+        
         if status == 0:
             print "%s ===> \033[1;40;34m%s\033[0m" % (url, "done")
         else:
             print "%s ===> \033[1;40;31m%s\033[0m" % (url, "error")
-    except Exception, e:
-        print "*** ERROR: fault url is %s" % url
 
+    except Exception, e:
+        print "*** ERROR: fault url is %s, detailed error %s" % (url, e)
+
+    # stop pcap monitor thread
     pcap_thread.end_pcap()
     pcap_thread.join()
 
@@ -57,7 +91,7 @@ def run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, dump_prefix, 
         mypacket = MyHTTPPacket(pcap_file, verbose)
     elif url.startswith("https://"):
         mypacket = MyHTTPSPacket(pcap_file, verbose)
-    mypacket.parse()
+    mypacket.parse(info_fp)
 
     inc_visit_count()
 
@@ -72,8 +106,9 @@ def run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, dump_prefix, 
         if childurl == None:
             continue
         new_dump_prefix = "%s-%d" % (dump_prefix, index)
+
         # FIXME: how to handle link loop ??? duplicate link ???
-        run_web_crawler(dev, filter, verbose, childurl, pcap_dir, temp_dir, new_dump_prefix, depth + 1, maxdepth)
+        run_web_crawler(dev, filter, verbose, childurl, pcap_dir, temp_dir, new_dump_prefix, depth + 1, maxdepth, info_fp)
         index += 1
 
 
@@ -89,9 +124,11 @@ def main(conf):
     verbose = conf.get("verbose", False)
 
     pcap_dir = "pcap_capture_dumps"
+    info_dir = "app_info_output"
     temp_dir = "web_crawler_output"
     if output != None:
        pcap_dir = output.get("pcap_dir", pcap_dir)
+       info_dir = output.get("info_dir", info_dir)
        temp_dir = output.get("temp_dir", temp_dir)
 
     devices = pcapy.findalldevs()
@@ -108,13 +145,24 @@ def main(conf):
         commands.getstatusoutput("rm -rf %s" % pcap_dir)
     os.mkdir(pcap_dir)
 
+    if os.path.exists(info_dir):
+        commands.getstatusoutput("rm -rf %s" % info_dir)
+    os.mkdir(info_dir)
+
     if os.path.exists(temp_dir):
         commands.getstatusoutput("rm -rf %s" % temp_dir)
     os.mkdir(temp_dir)
 
-    for id, url in apps.items():
+    for appid, url in apps.items():
         visit = 0
-        run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, str(id), 0, maxdepth)
+
+        info_file = os.path.join(info_dir, "%s-hosts" % str(appid))
+        info_fp = open(info_file, 'w')
+        run_web_crawler(dev, filter, verbose, url, pcap_dir, temp_dir, str(appid), 0, maxdepth, info_fp)
+        info_fp.close()
+
+        # NOTE: currently do simple string compare
+        remove_dup_entry(info_file)
 
 
 def usage():
@@ -125,6 +173,7 @@ def usage():
     -c or --config="config file path"
     ''' % sys.argv[0]
     print usage
+
 
 if __name__ == "__main__":
     json_conf = ""
