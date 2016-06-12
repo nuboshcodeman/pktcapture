@@ -150,11 +150,8 @@ class MyHTTPSPacket(MyTCPPacket):
                 if self.verbose:
                     print "===> TLS Server Hello"
             elif isinstance(record.data, dpkt.ssl.TLSCertificate):
-                #if self.verbose:
-                #    print "===> TLSCertificate"
-                print "===> TLSCertificate"
-                print type(record.data)
-                print record.data.certificates
+                if self.verbose:
+                    print "===> TLSCertificate"
         elif isinstance(record, dpkt.ssl.TLSChangeCipherSpec):
             if self.verbose:
                 print "===> TLSChangeCipherSpec"
@@ -167,21 +164,21 @@ class MyHTTPSPacket(MyTCPPacket):
     def reparse_ssl(self):
         hosts = []
 
-        packet = rdpcap(self.pcap_file)[3]
-        sslpayload = packet.lastlayer()
+        packets = rdpcap(self.pcap_file)
+        #packet = rdpcap(self.pcap_file)[3]
 
-        if isinstance(sslpayload[3], TLSClientHello):
-            if isinstance(sslpayload[4], TLSExtension):
-                if sslpayload[4].type == TLSExtensionType.SERVER_NAME:
-                    if isinstance(sslpayload[6], TLSServerName):
-                        k, host = sslpayload[6].getfield_and_val("data")
-                        host = host.strip().lower()
-                        if not host in hosts:
-                            hosts.append(host)
+        for packet in packets:
+            sslpayload = packet.lastlayer()
 
-                        print "===> https host: \033[4;40;33m%s\033[0m" % host
-
-        #if isinstance(sslpayload[3], )
+            if isinstance(sslpayload[3], TLSClientHello):
+                if isinstance(sslpayload[4], TLSExtension):
+                    if sslpayload[4].type == TLSExtensionType.SERVER_NAME:
+                        if isinstance(sslpayload[6], TLSServerName):
+                            k, host = sslpayload[6].getfield_and_val("data")
+                            host = host.strip().lower()
+                            if not host in hosts:
+                                hosts.append(host)
+                            print "===> https host: \033[4;40;33m%s\033[0m" % host
 
         return hosts
 
