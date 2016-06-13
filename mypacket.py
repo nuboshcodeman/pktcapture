@@ -170,15 +170,16 @@ class MyHTTPSPacket(MyTCPPacket):
         for packet in packets:
             sslpayload = packet.lastlayer()
 
-            if isinstance(sslpayload[3], TLSClientHello):
-                if isinstance(sslpayload[4], TLSExtension):
-                    if sslpayload[4].type == TLSExtensionType.SERVER_NAME:
-                        if isinstance(sslpayload[6], TLSServerName):
-                            k, host = sslpayload[6].getfield_and_val("data")
-                            host = host.strip().lower()
-                            if not host in hosts:
-                                hosts.append(host)
-                            print "===> https host: \033[4;40;33m%s\033[0m" % host
+            if sslpayload.getlayer(3) != None:
+                if isinstance(sslpayload[3], TLSClientHello):
+                    if isinstance(sslpayload[4], TLSExtension):
+                        if sslpayload[4].type == TLSExtensionType.SERVER_NAME:
+                            if isinstance(sslpayload[6], TLSServerName):
+                                k, host = sslpayload[6].getfield_and_val("data")
+                                host = host.strip().lower()
+                                if not host in hosts:
+                                    hosts.append(host)
+                                print "===> https host: \033[4;40;33m%s\033[0m" % host
 
         return hosts
 
